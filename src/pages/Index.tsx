@@ -55,11 +55,11 @@ const Index = () => {
 
       // Fetch current weather and forecast from OpenWeatherMap
       const weatherResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=YOUR_API_KEY`
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0
       );
       
       const forecastResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=YOUR_API_KEY`
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0
       );
 
       if (!weatherResponse.ok || !forecastResponse.ok) {
@@ -151,7 +151,7 @@ const Index = () => {
     try {
       // Fetch global weather alerts/news
       const response = await fetch(
-        'https://newsapi.org/v2/everything?q=hurricane+OR+tsunami+OR+cyclone+OR+tornado+OR+flood+OR+storm&sortBy=publishedAt&language=en&apiKey=YOUR_NEWS_API_KEY'
+        'https://newsapi.org/v2/everything?q=hurricane+OR+tsunami+OR+cyclone+OR+tornado+OR+flood+OR+storm&sortBy=publishedAt&language=en&apiKey=a46e7d640088dc4cdb814db3a21104e0'
       );
       
       if (response.ok) {
