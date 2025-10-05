@@ -9,14 +9,31 @@ interface WeatherData {
   precipitation: number;
   wind: number;
   humidity: number;
+  temperature: number;
   city: string;
   eventName: string;
   date: string;
+  description: string;
+  alerts?: Array<{
+    event: string;
+    description: string;
+  }>;
+}
+
+interface ForecastDay {
+  date: string;
+  temp: number;
+  precipitation: number;
+  wind: number;
+  humidity: number;
+  description: string;
 }
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
+  const [globalAlerts, setGlobalAlerts] = useState<string[]>([]);
 
   const fetchWeatherData = async (data: { city: string; eventName: string; date: string }) => {
     setIsLoading(true);
@@ -35,40 +52,115 @@ const Index = () => {
       }
 
       const { lat, lon } = geocodeData[0];
-      const eventDate = new Date(data.date);
-      const year = eventDate.getFullYear();
-      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-      const day = String(eventDate.getDate()).padStart(2, '0');
-      const formattedDate = `${year}${month}${day}`;
 
-      // Fetch NASA POWER API data
-      const nasaResponse = await fetch(
-        `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,WS2M,RH2M&community=RE&longitude=${lon}&latitude=${lat}&start=${formattedDate}&end=${formattedDate}&format=JSON`
+      // Fetch current weather and forecast from OpenWeatherMap
+      const weatherResponse = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=YOUR_API_KEY`
+      );
+      
+      const forecastResponse = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=YOUR_API_KEY`
       );
 
-      if (!nasaResponse.ok) {
-        throw new Error('Failed to fetch weather data from NASA POWER API');
+      if (!weatherResponse.ok || !forecastResponse.ok) {
+        throw new Error('Failed to fetch weather data');
       }
 
-      const nasaData = await nasaResponse.json();
-      const parameters = nasaData.properties.parameter;
+      const currentWeather = await weatherResponse.json();
+      const forecastData = await forecastResponse.json();
 
       const weatherData: WeatherData = {
-        precipitation: parameters.PRECTOTCORR?.[formattedDate] || 0,
-        wind: parameters.WS2M?.[formattedDate] || 0,
-        humidity: parameters.RH2M?.[formattedDate] || 0,
+        precipitation: currentWeather.rain?.['1h'] || 0,
+        wind: currentWeather.wind.speed,
+        humidity: currentWeather.main.humidity,
+        temperature: currentWeather.main.temp,
         city: data.city,
         eventName: data.eventName,
         date: data.date,
+        description: currentWeather.weather[0].description,
+        alerts: currentWeather.alerts,
       };
 
+      // Process 5-day forecast (taking one reading per day at noon)
+      const dailyForecasts: ForecastDay[] = [];
+      const processedDates = new Set<string>();
+      
+      forecastData.list.forEach((item: any) => {
+        const itemDate = new Date(item.dt * 1000).toLocaleDateString();
+        if (!processedDates.has(itemDate) && dailyForecasts.length < 5) {
+          processedDates.add(itemDate);
+          dailyForecasts.push({
+            date: itemDate,
+            temp: item.main.temp,
+            precipitation: item.rain?.['3h'] || 0,
+            wind: item.wind.speed,
+            humidity: item.main.humidity,
+            description: item.weather[0].description,
+          });
+        }
+      });
+
       setWeatherData(weatherData);
+      setForecast(dailyForecasts);
+      
+      // Check for hazardous conditions
+      checkAndNotifyHazards(weatherData);
+      
       toast.success('Weather data retrieved successfully!');
     } catch (error) {
       console.error('Error fetching weather data:', error);
       toast.error('Failed to fetch weather data. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkAndNotifyHazards = (data: WeatherData) => {
+    const alerts: string[] = [];
+    
+    if (data.wind > 50) {
+      alerts.push('⚠️ EXTREME WIND WARNING: Hurricane-force winds detected!');
+    } else if (data.wind > 30) {
+      alerts.push('🌪️ Very Windy Conditions');
+    }
+    
+    if (data.precipitation > 50) {
+      alerts.push('⚠️ SEVERE RAIN WARNING: Heavy rainfall detected!');
+    } else if (data.precipitation > 10) {
+      alerts.push('🌧️ Very Rainy Conditions');
+    }
+    
+    if (data.temperature < 5) {
+      alerts.push('❄️ Very Cool Conditions');
+    }
+    
+    if (data.temperature > 35) {
+      alerts.push('☀️ Very Sunny & Hot Conditions');
+    }
+    
+    if (data.alerts && data.alerts.length > 0) {
+      data.alerts.forEach(alert => {
+        alerts.push(`⚠️ ${alert.event}: ${alert.description}`);
+      });
+    }
+    
+    alerts.forEach(alert => toast.warning(alert, { duration: 5000 }));
+  };
+
+  const fetchGlobalAlerts = async () => {
+    try {
+      // Fetch global weather alerts/news
+      const response = await fetch(
+        'https://newsapi.org/v2/everything?q=hurricane+OR+tsunami+OR+cyclone+OR+tornado+OR+flood+OR+storm&sortBy=publishedAt&language=en&apiKey=YOUR_NEWS_API_KEY'
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const recentAlerts = data.articles.slice(0, 5).map((article: any) => article.title);
+        setGlobalAlerts(recentAlerts);
+      }
+    } catch (error) {
+      console.error('Error fetching global alerts:', error);
     }
   };
 
@@ -95,7 +187,20 @@ const Index = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <ParadeForm onSubmit={fetchWeatherData} isLoading={isLoading} />
           
-          {weatherData && <WeatherDashboard data={weatherData} />}
+          {weatherData && <WeatherDashboard data={weatherData} forecast={forecast} />}
+          
+          {globalAlerts.length > 0 && (
+            <div className="glow-card p-6 bg-destructive/10 border-destructive/30">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span>🌍</span> Global Hazard Alerts
+              </h3>
+              <div className="space-y-2">
+                {globalAlerts.map((alert, index) => (
+                  <p key={index} className="text-sm text-muted-foreground">{alert}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <footer className="text-center mt-16 text-sm text-muted-foreground">

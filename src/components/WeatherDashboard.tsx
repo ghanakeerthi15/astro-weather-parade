@@ -1,4 +1,4 @@
-import { CloudRain, Wind, Droplets, AlertTriangle, CheckCircle2, Share2 } from 'lucide-react';
+import { CloudRain, Wind, Droplets, AlertTriangle, CheckCircle2, Share2, Thermometer } from 'lucide-react';
 import WeatherCard from './WeatherCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -7,16 +7,32 @@ interface WeatherData {
   precipitation: number;
   wind: number;
   humidity: number;
+  temperature: number;
   city: string;
   eventName: string;
   date: string;
+  description: string;
+  alerts?: Array<{
+    event: string;
+    description: string;
+  }>;
+}
+
+interface ForecastDay {
+  date: string;
+  temp: number;
+  precipitation: number;
+  wind: number;
+  humidity: number;
+  description: string;
 }
 
 interface WeatherDashboardProps {
   data: WeatherData;
+  forecast: ForecastDay[];
 }
 
-const WeatherDashboard = ({ data }: WeatherDashboardProps) => {
+const WeatherDashboard = ({ data, forecast }: WeatherDashboardProps) => {
   const getStatus = (value: number, thresholds: { warning: number; danger: number }): 'safe' | 'warning' | 'danger' => {
     if (value >= thresholds.danger) return 'danger';
     if (value >= thresholds.warning) return 'warning';
@@ -88,7 +104,14 @@ const WeatherDashboard = ({ data }: WeatherDashboardProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <WeatherCard
+          icon={Thermometer}
+          label="Temperature"
+          value={data.temperature.toFixed(1)}
+          unit="°C"
+          status="safe"
+        />
         <WeatherCard
           icon={CloudRain}
           label="Precipitation"
@@ -100,7 +123,7 @@ const WeatherDashboard = ({ data }: WeatherDashboardProps) => {
           icon={Wind}
           label="Wind Speed"
           value={data.wind.toFixed(1)}
-          unit="m/s"
+          unit="km/h"
           status={windStatus}
         />
         <WeatherCard
@@ -111,6 +134,28 @@ const WeatherDashboard = ({ data }: WeatherDashboardProps) => {
           status={humidityStatus}
         />
       </div>
+
+      {forecast.length > 0 && (
+        <div className="glow-card p-6">
+          <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <span className="text-primary">📅</span> 5-Day Forecast
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {forecast.map((day, index) => (
+              <div key={index} className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-center">
+                <p className="text-sm font-semibold text-muted-foreground mb-2">{day.date}</p>
+                <p className="text-2xl font-bold neon-text mb-2">{day.temp.toFixed(0)}°C</p>
+                <p className="text-xs text-muted-foreground capitalize mb-2">{day.description}</p>
+                <div className="space-y-1 text-xs">
+                  <p>💧 {day.precipitation.toFixed(1)}mm</p>
+                  <p>💨 {day.wind.toFixed(0)}km/h</p>
+                  <p>💦 {day.humidity}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="glow-card p-6 bg-primary/5">
         <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
