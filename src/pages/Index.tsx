@@ -55,11 +55,11 @@ const Index = () => {
 
       // Fetch current weather and forecast from OpenWeatherMap
       const weatherResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0`
       );
       
       const forecastResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=a46e7d640088dc4cdb814db3a21104e0`
       );
 
       if (!weatherResponse.ok || !forecastResponse.ok) {
